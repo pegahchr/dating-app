@@ -38,8 +38,32 @@ export default function Home() {
     "You bruised me.",
     "You came across as very cocky.",
     "Your Instagram following list is massive — it looks like everyone except my grandma is on there.",
+    "You acted so bossy and appeared to believe you were in charge. This was adorable, but incorrect.",
   ];
-  
+  const disagreementResponses = [
+  "Disagreement logged. It will be ignored respectfully.",
+  "Your objection has been archived in the void.",
+  "Thank you for your feedback. We will not be using it.",
+  "A committee has reviewed your concern and laughed.",
+  "Error: disagreement functionality is currently unavailable.",
+  "Appeal rejected by unanimous vote (1-0).",
+  "Your confidence is inspiring. The findings remain unchanged.",
+];
+const getRandomDisagreementMessage = (current = "") => {
+  let message = current;
+
+  while (
+    disagreementResponses.length > 1 &&
+    message === current
+  ) {
+    message =
+      disagreementResponses[
+        Math.floor(Math.random() * disagreementResponses.length)
+      ];
+  }
+
+  return message;
+};
 
   const availability: Record<string, string[]> = {
     "2026-06-27": ["6:00 PM", "7:30 PM", "9:00 PM"],
@@ -52,7 +76,7 @@ export default function Home() {
     const key = date.toISOString().split("T")[0];
     return availableDates.includes(key);
   };
-
+const [messageIndex, setMessageIndex] = useState(0);
   const selectedKey = selectedDate
     ? selectedDate.toISOString().split("T")[0]
     : "";
@@ -174,14 +198,16 @@ export default function Home() {
         name={item}
         checked={responses[item] === "agree"}
         onChange={() => {
-          setResponses((prev) => ({ ...prev, [item]: "agree" }));
-          setDisagreedItem("");
-          setDisagreeMessages((prev) => ({
-            ...prev,
-            [item]: "",
-          }));
-          setNegativeError("");
-        }}
+  setResponses((prev) => ({ ...prev, [item]: "agree" }));
+  setDisagreedItem("");
+
+  setDisagreeMessages((prev) => ({
+    ...prev,
+    [item]: "",
+  }));
+
+  setNegativeError("");
+}}
       />
       <span className="ml-2">Agree</span>
     </label>
@@ -191,21 +217,27 @@ export default function Home() {
         type="radio"
         name={item}
         onChange={() => {
-          setDisagreeMessages((prev) => ({
-            ...prev,
-            [item]: "Disagreement logged. It will be ignored respectfully.",
-          }));
+  const randomMessage = disagreementResponses[messageIndex];
 
-          setDisagreedItem(item);
-          setResponses((prev) => ({ ...prev, [item]: "agree" }));
+setMessageIndex(
+  (prev) => (prev + 1) % disagreementResponses.length
+);
 
-          setTimeout(() => {
-            setDisagreeMessages((prev) => ({
-              ...prev,
-              [item]: "",
-            }));
-          }, 2500);
-        }}
+  setDisagreeMessages((prev) => ({
+    ...prev,
+    [item]: randomMessage,
+  }));
+
+  setDisagreedItem(item);
+  setResponses((prev) => ({ ...prev, [item]: "agree" }));
+
+  setTimeout(() => {
+    setDisagreeMessages((prev) => ({
+      ...prev,
+      [item]: "",
+    }));
+  }, 2500);
+}}
       />
       <span className="ml-2">Disagree</span>
     </label>
@@ -249,101 +281,73 @@ export default function Home() {
           </>
         )}
 
-        {/* STEP 5: Calendar & Times Side-by-Side */}
-        {step === 5 && (
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Calendar */}
-            <div>
-              <h3 className="text-xl font-semibold mb-4">Select a Date</h3>
-              <div className="bg-white border rounded-3xl p-6 shadow-sm">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
+     {/* STEP 5: Calendar & Times Side-by-Side */}
+{step === 5 && (
+  <div className="grid md:grid-cols-2 gap-8 items-start w-full">
+    
+    {/* LEFT: Calendar */}
+    <div className="min-w-0">
+      <h3 className="text-xl font-semibold mb-4">Select a Date</h3>
 
-                    const d = new Date(date);
-                    d.setHours(0, 0, 0, 0);
+      <div className="bg-white border rounded-3xl p-4 shadow-sm w-full overflow-hidden">
+        <div className="w-full overflow-x-auto">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            disabled={(date) => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
 
-                    const key = date.toISOString().split("T")[0];
+              const d = new Date(date);
+              d.setHours(0, 0, 0, 0);
 
-                    return d < today || !availability[key];
-                  }}
-                  className="rounded-md"
-                />
-              </div>
+              const key = date.toISOString().split("T")[0];
+
+              return d < today || !availability[key];
+            }}
+            className="rounded-md w-full max-w-full"
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* RIGHT: Times */}
+    <div className="min-w-0">
+      {selectedDate ? (
+        <>
+          <h3 className="text-xl font-semibold mb-4">Available Times</h3>
+
+          {times.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2">
+              {times.map((time) => (
+                <button
+                  key={time}
+                  onClick={() => setSelectedSlot(time)}
+                  className={`rounded-xl border p-3 transition ${
+                    selectedSlot === time
+                      ? "bg-pink-500 text-white border-pink-500"
+                      : "hover:bg-pink-50"
+                  }`}
+                >
+                  {time}
+                </button>
+              ))}
             </div>
-            {/* Available Times */}
-            <div>
-              {selectedDate ? (
-                <>
-                  <h3 className="text-xl font-semibold mb-4">Available Times</h3>
-                  {times.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {times.map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => setSelectedSlot(time)}
-                          className={`rounded-xl border p-3 transition ${
-                            selectedSlot === time
-                              ? "bg-pink-500 text-white border-pink-500"
-                              : "hover:bg-pink-50"
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-600">No available times for this date.</p>
-                  )}
-                </>
-              ) : (
-                <p className="text-gray-600">Please select a date to see available times.</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Submit Button */}
-        {step === 5 && (
-          <div className="mt-6">
-            <button
-              disabled={!selectedSlot}
-              className={`px-6 py-3 rounded-xl text-white ${
-                selectedSlot ? "bg-green-500" : "bg-gray-400 cursor-not-allowed"
-              }`}
-              onClick={async () => {
-                if (!selectedSlot) return;
-
-                const { data, error } = await supabase
-                  .from("application")
-                  .insert({
-                    first_name: firstName,
-                    last_name: lastName,
-                    selected_slot: selectedSlot,
-                    responses: responses,
-                    comment: comment,
-                  })
-                  .select();
-
-                if (error) {
-                  console.log("Supabase error:", error);
-                  alert(error.message);
-                  return;
-                }
-
-                console.log("Saved row:", data);
-                setStep(6);
-              }}
-            >
-              Submit
-            </button>
-          </div>
-        )}
-
+          ) : (
+            <p className="text-gray-600">
+              No available times for this date.
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-gray-600">
+          Please select a date to see available times.
+        </p>
+      )}
+    </div>
+  </div>
+)}
         {/* STEP 6 */}
         {step === 6 && (
           <>
