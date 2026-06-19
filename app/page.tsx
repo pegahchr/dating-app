@@ -40,6 +40,7 @@ export default function Home() {
     "Your Instagram following list is massive — it looks like everyone except my grandma is on there.",
     "You acted so bossy and appeared to believe you were in charge. This was adorable, but incorrect.",
   ];
+
   const disagreementResponses = [
     "Disagreement logged. It will be ignored respectfully.",
     "Your objection has been archived in the void.",
@@ -49,9 +50,9 @@ export default function Home() {
     "Appeal rejected by unanimous vote (1-0).",
     "Your confidence is inspiring. The findings remain unchanged.",
   ];
+
   const getRandomDisagreementMessage = (current = "") => {
     let message = current;
-
     while (
       disagreementResponses.length > 1 &&
       message === current
@@ -61,7 +62,6 @@ export default function Home() {
           Math.floor(Math.random() * disagreementResponses.length)
         ];
     }
-
     return message;
   };
 
@@ -76,6 +76,13 @@ export default function Home() {
     const key = date.toISOString().split("T")[0];
     return availableDates.includes(key);
   };
+
+  const allPossibleSlots = [
+    "6:00 PM",
+    "9:00 PM",
+    "12:00 AM",
+  ];
+
   const [messageIndex, setMessageIndex] = useState(0);
   const selectedKey = selectedDate
     ? selectedDate.toISOString().split("T")[0]
@@ -229,7 +236,7 @@ export default function Home() {
                           }));
 
                           setDisagreedItem(item);
-                          setResponses((prev) => ({ ...prev, [item]: "disagree" }));
+                          setResponses((prev) => ({ ...prev, [item]: "agree" }));
 
                           setTimeout(() => {
                             setDisagreeMessages((prev) => ({
@@ -289,26 +296,39 @@ export default function Home() {
 
                 <div className="bg-white dark:bg-gray-800 border rounded-2xl p-3 shadow-sm w-full overflow-hidden">
                   <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
+  mode="single"
+  selected={selectedDate}
+  onSelect={setSelectedDate}
+  disabled={(date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-                      const d = new Date(date);
-                      d.setHours(0, 0, 0, 0);
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
 
-                      const key = date.toISOString().split("T")[0];
+    const key = date.toISOString().split("T")[0];
 
-                      return d < today || !availability[key];
-                    }}
-                    className="rounded-md w-full"
-                    classNames={{
-                      day: "h-9 w-9 p-0 font-normal flex items-center justify-center",
-                      day_button: "h-9 w-9 flex items-center justify-center",
-                    }}
-                  />
+    if (
+      key === "2026-06-19" ||
+      key === "2026-06-20" ||
+      key === "2026-06-26"
+    ) {
+      return false;
+    }
+
+    return d < today || !Object.keys(availability).includes(key);
+  }}
+  className="rounded-md w-full"
+  classNames={{
+    day: "h-9 w-9 p-0 font-normal flex items-center justify-center",
+
+    // 👇 ADD THIS
+selected:
+      "bg-pink-500 text-white rounded-md hover:bg-pink-600",
+
+    day_button: "h-9 w-9 flex items-center justify-center",
+  }}
+/>
                 </div>
               </div>
 
@@ -317,30 +337,62 @@ export default function Home() {
                 {selectedDate ? (
                   <>
                     <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
-                      Available Times
+                      Time Slots
                     </h3>
+                    {/* Generate 3-hour slots from 6:00 PM to 11:00 PM */}
+                    {(() => {
+                      const allSlots = [];
+                      const startHour = 18; // 6 PM
+                      const endHour = 23; // 11 PM
+                      for (let hour = startHour; hour <= endHour; hour++) {
+                        const displayHour = hour > 12 ? hour - 12 : hour;
+                        const ampm = hour >= 12 ? "PM" : "AM";
+                        allSlots.push(`${displayHour}:00 ${ampm}`);
+                      }
 
-                    {times.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {times.map((time) => (
-                          <button
-                            key={time}
-                            onClick={() => setSelectedSlot(time)}
-                            className={`rounded-lg border p-2 text-sm transition ${
-                              selectedSlot === time
-                                ? "bg-pink-500 text-white border-pink-500"
-                                : "hover:bg-pink-50"
-                            }`}
-                          >
-                            {time}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-600 text-sm dark:text-gray-400">
-                        No available times for this date.
-                      </p>
-                    )}
+                      const dateKey = selectedKey;
+
+                      // Determine if date is fully unavailable
+                      const fullyUnavailableDates = ["2026-06-19", "2026-06-20", "2026-06-26"];
+
+                      const isDateUnavailable = fullyUnavailableDates.includes(dateKey);
+
+                      // Get the actual available times for the date
+                      const availableTimes = availability[dateKey] || [];
+
+                      return (
+                        <div className="grid grid-cols-2 gap-2">
+                          {allSlots.map((slot) => {
+                            // Check if slot is available
+                            const isSlotAvailable =
+                              isDateUnavailable
+                                ? false
+                                : availableTimes.some((t) => t.startsWith(slot));
+                            const isSelected = selectedSlot === slot;
+                            const isUnavailable = !isSlotAvailable;
+
+                            return (
+                              <button
+                                key={slot}
+                                onClick={() => isSlotAvailable && setSelectedSlot(slot)}
+                                disabled={isUnavailable}
+                                className={`rounded-lg border p-2 text-sm transition ${
+                                  isSelected
+                                    ? "bg-pink-500 text-white border-pink-500"
+                                    : "hover:bg-pink-50"
+                                } ${
+                                  isUnavailable
+                                    ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
+                                    : ""
+                                }`}
+                              >
+                                {slot}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </>
                 ) : (
                   <p className="text-gray-600 text-sm dark:text-gray-400">
@@ -349,49 +401,49 @@ export default function Home() {
                 )}
               </div>
             </div>
+          
+    {/* SUBMIT BUTTON */}
+<button
+  disabled={!selectedDate || !selectedSlot}
+  onClick={async () => {
+    if (!selectedDate || !selectedSlot) return;
 
-            {/* SUBMIT BUTTON */}
-            <button
-              disabled={!selectedDate || !selectedSlot}
-              onClick={async () => {
-                if (!selectedDate || !selectedSlot) return;
+    const { data, error } = await supabase
+      .from("application")
+      .insert({
+       first_name: firstName,
+      last_name: lastName,
+      selected_slot: selectedSlot,
+      responses: responses,
+      comment: comment,
+      })
+      .select();
 
-                const { data, error } = await supabase
-                  .from("application")
-                  .insert({
-                    first_name: firstName,
-                    last_name: lastName,
-                    selected_slot: selectedSlot,
-                    responses: responses,
-                    comment: comment,
-                  })
-                  .select();
+    if (error) {
+      console.error("Supabase error:", error);
+      alert(error.message);
+      return;
+    }
 
-                if (error) {
-                  console.error("Supabase error:", error);
-                  alert(error.message);
-                  return;
-                }
-
-                console.log("Saved row:", data);
-                setStep(6);
-              }}
-              className={`mt-8 w-full py-3 rounded-xl font-medium transition ${
-                selectedDate && selectedSlot
-                  ? "bg-pink-500 text-white hover:bg-pink-600"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              Submit Application 💖
-            </button>
-          </>
-        )}
+    console.log("Saved row:", data);
+    setStep(6);
+  }}
+  className={`mt-8 w-full py-3 rounded-xl font-medium transition ${
+    selectedDate && selectedSlot
+      ? "bg-pink-500 text-white hover:bg-pink-600"
+      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+  }`}
+>
+  Submit Application 💖
+</button>
+  </>
+)}
         {/* STEP 6 */}
         {step === 6 && (
           <>
-            <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-gray-100">Submission Complete 💖</h1>
-            <p className="text-lg text-gray-700 dark:text-gray-300">Your application has been successfully submitted.</p>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">
+            <h1 className="text-4xl font-bold mb-4">Submission Complete 💖</h1>
+            <p className="text-lg">Your application has been successfully submitted.</p>
+            <p className="mt-4 text-gray-600">
               Thank you for participating in the evaluation process.
               The committee (me) will review your responses.
             </p>
