@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Calendar } from "@/components/ui/calendar"; // Import Calendar
 
 export default function Home() {
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState("");
   const [step, setStep] = useState(1);
 
@@ -10,10 +13,10 @@ export default function Home() {
   const [lastName, setLastName] = useState("");
 
   const [comment, setComment] = useState("");
-  const [booking, setBooking] = useState("");
-
   const [error, setError] = useState("");
   const [negativeError, setNegativeError] = useState("");
+  const [disagreedItem, setDisagreedItem] = useState("");
+  const [disagreeMessages, setDisagreeMessages] = useState<Record<string, string>>({});
 
   const allowedNames = [
     { first: "sam", last: "mortazavi" },
@@ -22,7 +25,7 @@ export default function Home() {
 
   const positives = [
     "You were on time.",
-    "You were decisive and took initiative with planning the date (even though we ended up going with the place I suggested).",
+    "You were decisive and took initiative with planning the date (even though we ended up going with the place I picked, nice try).",
     "You came across as confident and masculine.",
     "You were kind to the staff and tipped well.",
     "You made me laugh.",
@@ -35,26 +38,51 @@ export default function Home() {
     "You bruised me.",
     "You came across as very cocky.",
     "Your Instagram following list is massive — it looks like everyone except my grandma is on there.",
+    "You acted so bossy and appeared to believe you were in charge. This was adorable, but incorrect.",
   ];
-
-  const availableSlots = [
-  {
-    date: "Saturday, June 27",
-    times: ["6:00 PM", "7:30 PM", "9:00 PM"],
-  },
-  {
-    date: "Friday, July 3",
-    times: ["8:10 PM", "9:30 PM"],
-  },
-  {
-    date: "Saturday, July 4",
-    times: ["6:00 PM", "7:30 PM"],
-  },
-  {
-    date: "Friday, July 10",
-    times: ["8:10 PM", "9:30 PM"],
-  },
+  const disagreementResponses = [
+  "Disagreement logged. It will be ignored respectfully.",
+  "Your objection has been archived in the void.",
+  "Thank you for your feedback. We will not be using it.",
+  "A committee has reviewed your concern and laughed.",
+  "Error: disagreement functionality is currently unavailable.",
+  "Appeal rejected by unanimous vote (1-0).",
+  "Your confidence is inspiring. The findings remain unchanged.",
 ];
+const getRandomDisagreementMessage = (current = "") => {
+  let message = current;
+
+  while (
+    disagreementResponses.length > 1 &&
+    message === current
+  ) {
+    message =
+      disagreementResponses[
+        Math.floor(Math.random() * disagreementResponses.length)
+      ];
+  }
+
+  return message;
+};
+
+  const availability: Record<string, string[]> = {
+    "2026-06-27": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-07-03": ["8:10 PM", "9:30 PM"],
+    "2026-07-04": ["6:00 PM", "7:30 PM"],
+  };
+  const availableDates = Object.keys(availability);
+
+  const isDateAvailable = (date: Date) => {
+    const key = date.toISOString().split("T")[0];
+    return availableDates.includes(key);
+  };
+const [messageIndex, setMessageIndex] = useState(0);
+  const selectedKey = selectedDate
+    ? selectedDate.toISOString().split("T")[0]
+    : "";
+
+  const times = availability[selectedKey] || [];
+
   const [responses, setResponses] = useState<Record<string, string>>({});
 
   const checkEligibility = () => {
@@ -78,81 +106,46 @@ export default function Home() {
     setStep(2);
   };
 
-  const handleNegativeChange = (item: string, value: string) => {
-    if (value === "disagree") {
-      setNegativeError("You have to agree. Disagreeing is not allowed.");
-      return;
-    }
-
-    setNegativeError("");
-
-    setResponses((prev) => ({
-      ...prev,
-      [item]: value,
-    }));
-  };
-
-  const canProceedFromNegatives = () => {
-    return negatives.every((n) => responses[n] === "agree");
-  };
-
   return (
     <main className="min-h-screen bg-pink-50 flex items-center justify-center p-6">
       <div className="bg-white shadow-xl rounded-3xl p-8 w-full max-w-2xl">
-
         {/* STEP 1 */}
         {step === 1 && (
           <>
-            <h1 className="text-3xl font-bold mb-3">
-              Round 2 Eligibility Check 💌
-            </h1>
-
+            <h1 className="text-3xl font-bold mb-3">Round 2 Eligibility Check 💌</h1>
             <p className="mb-6 text-gray-600">
               Enter your name to see if you qualify for Round 2.
             </p>
-
             <input
               className="w-full border p-3 rounded-xl mb-4"
               placeholder="First Name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
             />
-
             <input
               className="w-full border p-3 rounded-xl mb-6"
               placeholder="Last Name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
-
             <button
               className="bg-pink-500 text-white px-6 py-3 rounded-xl"
               onClick={checkEligibility}
             >
               Check Eligibility
             </button>
-
-            {error && (
-              <p className="text-red-500 mt-4">{error}</p>
-            )}
+            {error && <p className="text-red-500 mt-4">{error}</p>}
           </>
         )}
 
         {/* STEP 2 */}
         {step === 2 && (
           <>
-            <h1 className="text-4xl font-bold mb-4">
-              Congratulations 🎉
-            </h1>
-
+            <h1 className="text-4xl font-bold mb-4">Congratulations 🎉</h1>
             <p className="mb-3 text-lg">
               Congratulations. Our first date has been officially reviewed.
             </p>
-
-            <p className="mb-6 text-gray-600">
-              Please review the findings below.
-            </p>
-
+            <p className="mb-6 text-gray-600">Please review the findings below.</p>
             <button
               className="bg-pink-500 text-white px-6 py-3 rounded-xl"
               onClick={() => setStep(3)}
@@ -162,13 +155,10 @@ export default function Home() {
           </>
         )}
 
-        {/* STEP 3 - POSITIVES */}
+        {/* STEP 3 */}
         {step === 3 && (
           <>
-            <h2 className="text-2xl font-bold mb-6">
-              Positives 📈
-            </h2>
-
+            <h2 className="text-2xl font-bold mb-6">Positives 📈</h2>
             <div className="space-y-3">
               {positives.map((item) => (
                 <div key={item} className="border rounded-xl p-4">
@@ -176,7 +166,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
             <button
               className="mt-6 bg-pink-500 text-white px-6 py-3 rounded-xl"
               onClick={() => setStep(4)}
@@ -185,175 +174,213 @@ export default function Home() {
             </button>
           </>
         )}
-{/* STEP 4 - NEGATIVES (STRICT AGREEMENT) */}
-{step === 4 && (
-  <>
-    <h2 className="text-2xl font-bold mb-6">
-      Areas for Review ⚠️
-    </h2>
 
-    <p className="mb-6 text-gray-600">
-      Please indicate whether you agree with the findings below.
-    </p>
-
-    {negatives.map((item) => (
-      <div key={item} className="border rounded-xl p-4 mb-4">
-        <p className="mb-3">{item}</p>
-
-        <div className="flex gap-6">
-          <label>
-            <input
-              type="radio"
-              name={item}
-              checked={responses[item] === "agree"}
-              onChange={() => {
-                setResponses((prev) => ({
-                  ...prev,
-                  [item]: "agree",
-                }));
-                setNegativeError("");
-              }}
-            />
-            <span className="ml-2">Agree</span>
-          </label>
-
-          <label>
-            <input
-              type="radio"
-              name={item}
-              onChange={() => {
-                setNegativeError(
-                  "You have to agree. If you disagree, please explain yourself in the comment section below."
-                );
-
-                setResponses((prev) => ({
-                  ...prev,
-                  [item]: "agree",
-                }));
-              }}
-            />
-            <span className="ml-2">Disagree</span>
-          </label>
-        </div>
-      </div>
-    ))}
-
-    {negativeError && (
-      <p className="text-red-500 mb-4">
-        {negativeError}
-      </p>
-    )}
-
-    <textarea
-      className="w-full border rounded-xl p-3"
-      rows={4}
-      placeholder="You may explain yourself here..."
-      value={comment}
-      onChange={(e) => setComment(e.target.value)}
-    />
-
-    <button
-      className="mt-6 bg-pink-500 text-white px-6 py-3 rounded-xl"
-      onClick={() => {
-        const allAgreed = negatives.every(
-          (item) => responses[item] === "agree"
-        );
-
-        if (!allAgreed) {
-          setNegativeError(
-            "You must agree to all findings before proceeding."
-          );
-          return;
-        }
-
-        setStep(5);
-      }}
-    >
-      Continue
-    </button>
-  </>
-)}
-{/* STEP 5 - BOOKING */}
-{step === 5 && (
-  <>
-    <h2 className="text-2xl font-bold mb-4">
-      Round 2 Invitation 📅
-    </h2>
-
-    <p className="mb-6 text-gray-600">
-      Pick a time that works for you.
-    </p>
-
-    <div className="space-y-3 mb-6">
-
-      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-        ❌ Friday, June 19 — No availability left
-      </div>
-
-      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-        ❌ Saturday, June 20 — No availability left
-      </div>
-
-      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-        ❌ Friday, June 26 — No availability left
-      </div>
-
-      {availableSlots.map((day) => (
-        <div
-          key={day.date}
-          className="border rounded-xl p-4"
-        >
-          <h3 className="font-semibold mb-3">
-            {day.date}
-          </h3>
-
-          <div className="flex flex-wrap gap-2">
-            {day.times.map((time) => {
-              const slot = `${day.date} - ${time}`;
-
-              return (
-                <button
-                  key={slot}
-                  onClick={() => setSelectedSlot(slot)}
-                  className={`px-4 py-2 rounded-lg border transition ${
-                    selectedSlot === slot
-                      ? "bg-pink-500 text-white border-pink-500"
-                      : "bg-white hover:bg-pink-50"
-                  }`}
-                >
-                  {time}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-
-    <button
-      disabled={!selectedSlot}
-      className={`px-6 py-3 rounded-xl text-white ${
-        selectedSlot
-          ? "bg-green-500"
-          : "bg-gray-400 cursor-not-allowed"
+        {/* STEP 4 */}
+        {step === 4 && (
+          <>
+            <h2 className="text-2xl font-bold mb-6">Areas for Review ⚠️</h2>
+            <p className="mb-6 text-gray-600">
+              Please indicate whether you agree with the findings below.
+            </p>
+            {negatives.map((item) => (
+              <div key={item} className="border rounded-xl p-4 mb-4">
+                <p className="mb-3">{item}</p>
+              <div className="flex flex-col gap-2">
+  {/* BUTTON ROW */}
+  <div className="flex gap-6 items-center">
+    <label
+      className={`transition-all duration-300 ${
+        disagreedItem === item ? "scale-125 font-bold text-green-600" : ""
       }`}
-      onClick={() => setStep(6)}
     >
-      Confirm Booking
-    </button>
-  </>
-)}
+      <input
+        type="radio"
+        name={item}
+        checked={responses[item] === "agree"}
+        onChange={() => {
+  setResponses((prev) => ({ ...prev, [item]: "agree" }));
+  setDisagreedItem("");
+
+  setDisagreeMessages((prev) => ({
+    ...prev,
+    [item]: "",
+  }));
+
+  setNegativeError("");
+}}
+      />
+      <span className="ml-2">Agree</span>
+    </label>
+
+    <label>
+      <input
+        type="radio"
+        name={item}
+        onChange={() => {
+  const randomMessage = disagreementResponses[messageIndex];
+
+setMessageIndex(
+  (prev) => (prev + 1) % disagreementResponses.length
+);
+
+  setDisagreeMessages((prev) => ({
+    ...prev,
+    [item]: randomMessage,
+  }));
+
+  setDisagreedItem(item);
+  setResponses((prev) => ({ ...prev, [item]: "agree" }));
+
+  setTimeout(() => {
+    setDisagreeMessages((prev) => ({
+      ...prev,
+      [item]: "",
+    }));
+  }, 2500);
+}}
+      />
+      <span className="ml-2">Disagree</span>
+    </label>
+  </div>
+
+  {/* MESSAGE UNDER BUTTONS */}
+  {disagreeMessages[item] && (
+    <p className="text-sm text-gray-500 italic">
+      {disagreeMessages[item]}
+    </p>
+  )}
+</div>
+
+              </div>
+            ))}
+            {negativeError && (
+              <p className="text-red-500 mb-4 font-semibold">{negativeError}</p>
+            )}
+            <textarea
+              className="w-full border rounded-xl p-3"
+              rows={4}
+              placeholder="You may explain yourself here..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+            <button
+              className="mt-6 bg-pink-500 text-white px-6 py-3 rounded-xl"
+              onClick={() => {
+                const allAgreed = negatives.every(
+                  (item) => responses[item] === "agree"
+                );
+                if (!allAgreed) {
+                  setNegativeError("You must agree to all findings before proceeding.");
+                  return;
+                }
+                setStep(5);
+              }}
+            >
+              Continue
+            </button>
+          </>
+        )}
+
+        {/* STEP 5: Calendar & Times Side-by-Side */}
+        {step === 5 && (
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Calendar */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4">Select a Date</h3>
+              <div className="bg-white border rounded-3xl p-6 shadow-sm">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const d = new Date(date);
+                    d.setHours(0, 0, 0, 0);
+
+                    const key = date.toISOString().split("T")[0];
+
+                    return d < today || !availability[key];
+                  }}
+                  className="rounded-md"
+                />
+              </div>
+            </div>
+            {/* Available Times */}
+            <div>
+              {selectedDate ? (
+                <>
+                  <h3 className="text-xl font-semibold mb-4">Available Times</h3>
+                  {times.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {times.map((time) => (
+                        <button
+                          key={time}
+                          onClick={() => setSelectedSlot(time)}
+                          className={`rounded-xl border p-3 transition ${
+                            selectedSlot === time
+                              ? "bg-pink-500 text-white border-pink-500"
+                              : "hover:bg-pink-50"
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">No available times for this date.</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-600">Please select a date to see available times.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Submit Button */}
+        {step === 5 && (
+          <div className="mt-6">
+            <button
+              disabled={!selectedSlot}
+              className={`px-6 py-3 rounded-xl text-white ${
+                selectedSlot ? "bg-green-500" : "bg-gray-400 cursor-not-allowed"
+              }`}
+              onClick={async () => {
+                if (!selectedSlot) return;
+
+                const { data, error } = await supabase
+                  .from("application")
+                  .insert({
+                    first_name: firstName,
+                    last_name: lastName,
+                    selected_slot: selectedSlot,
+                    responses: responses,
+                    comment: comment,
+                  })
+                  .select();
+
+                if (error) {
+                  console.log("Supabase error:", error);
+                  alert(error.message);
+                  return;
+                }
+
+                console.log("Saved row:", data);
+                setStep(6);
+              }}
+            >
+              Submit
+            </button>
+          </div>
+        )}
+
         {/* STEP 6 */}
         {step === 6 && (
           <>
-            <h1 className="text-4xl font-bold mb-4">
-              Submission Complete 💖
-            </h1>
-
-            <p className="text-lg">
-              Your application has been successfully submitted.
-            </p>
-
+            <h1 className="text-4xl font-bold mb-4">Submission Complete 💖</h1>
+            <p className="text-lg">Your application has been successfully submitted.</p>
             <p className="mt-4 text-gray-600">
               Thank you for participating in the evaluation process.
               The committee (me) will review your responses.
