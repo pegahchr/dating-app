@@ -5,24 +5,44 @@ import { supabase } from "@/lib/supabase";
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar
 
 export default function Home() {
+  // Existing states
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedProfile, setSelectedProfile] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [step, setStep] = useState(1);
-
   const [firstName, setFirstName] = useState("");
+  
   const [lastName, setLastName] = useState("");
-
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
   const [negativeError, setNegativeError] = useState("");
   const [disagreedItem, setDisagreedItem] = useState("");
   const [disagreeMessages, setDisagreeMessages] = useState<Record<string, string>>({});
 
-  const allowedNames = [
-    { first: "sam", last: "mortazavi" },
-    { first: "amin", last: "khonsari" },
+  const [messageIndex, setMessageIndex] = useState(0);
+  const selectedKey = selectedDate ? selectedDate.toISOString().split("T")[0] : "";
+
+  // New profile-related states
+  const [allowedProfile, setAllowedProfile] = useState(""); // Selected profile after validation
+
+  // Profiles list
+  const profiles = ["Sam", "Amin", "Barbod", "Rumtin", "Arian"];
+
+  // User profiles with name matching
+  const allowedUsers = [
+    {
+      first: "sam",
+      last: "mortazavi",
+      profile: "Sam",
+    },
+    {
+      first: "amin",
+      last: "khonsari",
+      profile: "Amin",
+    },
   ];
 
+  // Existing static data
   const positives = [
     "You were on time.",
     "You were decisive and took initiative with planning the date (even though we ended up going with the place I picked, nice try).",
@@ -83,40 +103,38 @@ export default function Home() {
     "12:00 AM",
   ];
 
-  const [messageIndex, setMessageIndex] = useState(0);
-  const selectedKey = selectedDate
-    ? selectedDate.toISOString().split("T")[0]
-    : "";
-
-  const times = availability[selectedKey] || [];
-
   const [responses, setResponses] = useState<Record<string, string>>({});
 
+  // Step 1: Check name validity and determine allowed user
   const checkEligibility = () => {
     if (!firstName.trim() || !lastName.trim()) {
       setError("You have to enter both first name and last name.");
       return;
     }
 
-    const valid = allowedNames.some(
+    // Find user based on name
+    const user = allowedUsers.find(
       (p) =>
         p.first === firstName.trim().toLowerCase() &&
         p.last === lastName.trim().toLowerCase()
     );
 
-    if (!valid) {
+    if (!user) {
       setError("Invalid user doesn't exist.");
       return;
     }
 
-    setError("");
+    // Set profile based on user
+    setAllowedProfile(user.profile);
+    // Proceed to profile selection step
     setStep(2);
   };
 
+  // Render
   return (
     <main className="min-h-screen bg-pink-50 flex items-center justify-center p-6">
       <div className="bg-white dark:bg-gray-900 shadow-xl rounded-3xl p-8 w-full max-w-2xl">
-        {/* STEP 1 */}
+        {/* STEP 1: Name validation */}
         {step === 1 && (
           <>
             <h1 className="text-3xl font-bold mb-3 text-gray-900 dark:text-gray-100">
@@ -147,8 +165,48 @@ export default function Home() {
           </>
         )}
 
-        {/* STEP 2 */}
+        {/* STEP 2: Profile selection */}
         {step === 2 && (
+          <>
+            <h1 className="text-3xl font-bold mb-3 text-gray-900 dark:text-gray-100">
+              Select Your Profile
+            </h1>
+            <p className="mb-6 text-gray-600 dark:text-gray-300">
+              Choose your profile to continue.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              {profiles.map((profile) => {
+                const allowed = profile === allowedProfile;
+                return (
+                  <button
+                    key={profile}
+                    disabled={!allowed}
+                    onClick={() => {
+                      if (allowed) {
+                        setStep(3);
+                      }
+                    }}
+                    className={`p-6 rounded-2xl border text-lg font-semibold transition
+                      ${
+                        allowed
+                          ? "hover:border-pink-500 hover:bg-pink-50 cursor-pointer"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      }
+                    `}
+                  >
+                    {profile}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-4 text-sm text-gray-500">
+              You may only select the profile matching your verified name.
+            </p>
+          </>
+        )}
+
+        {/* STEP 3: Congratulations */}
+        {step === 3 && (
           <>
             <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-gray-100">Congratulations 🎉</h1>
             <p className="mb-3 text-lg text-gray-700 dark:text-gray-300">
@@ -157,15 +215,15 @@ export default function Home() {
             <p className="mb-6 text-gray-600 dark:text-gray-400">Please review the findings below.</p>
             <button
               className="bg-pink-500 text-white px-6 py-3 rounded-xl hover:bg-pink-600"
-              onClick={() => setStep(3)}
+              onClick={() => setStep(4)}
             >
-              View Findings
+              Continue
             </button>
           </>
         )}
 
-        {/* STEP 3 */}
-        {step === 3 && (
+        {/* STEP 4: Positives */}
+        {step === 4 && (
           <>
             <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Positives 📈</h2>
             <div className="space-y-3">
@@ -177,15 +235,15 @@ export default function Home() {
             </div>
             <button
               className="mt-6 bg-pink-500 text-white px-6 py-3 rounded-xl hover:bg-pink-600"
-              onClick={() => setStep(4)}
+              onClick={() => setStep(5)}
             >
               Continue
             </button>
           </>
         )}
 
-        {/* STEP 4 */}
-        {step === 4 && (
+        {/* STEP 5: Review negatives & comments */}
+        {step === 5 && (
           <>
             <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Areas for Review ⚠️</h2>
             <p className="mb-6 text-gray-600 dark:text-gray-300">
@@ -202,50 +260,48 @@ export default function Home() {
                         disagreedItem === item ? "scale-125 font-bold text-green-600" : ""
                       }`}
                     >
-                      <input
-                        type="radio"
-                        name={item}
-                        checked={responses[item] === "agree"}
-                        onChange={() => {
-                          setResponses((prev) => ({ ...prev, [item]: "agree" }));
-                          setDisagreedItem("");
-                          setDisagreeMessages((prev) => ({
-                            ...prev,
-                            [item]: "",
-                          }));
-                          setNegativeError("");
-                        }}
-                      />
-                      <span className="ml-2">Agree</span>
-                    </label>
+                        
+      <input
+        type="radio"
+        name={item}
+        checked={responses[item] === "agree"}
+        onChange={() => {
+  setResponses((prev) => ({ ...prev, [item]: "agree" }));
+  setDisagreedItem("");
 
-                    <label>
-                      <input
-                        type="radio"
-                        name={item}
-                        onChange={() => {
-                          const randomMessage = disagreementResponses[messageIndex];
+  setDisagreeMessages((prev) => ({
+    ...prev,
+    [item]: "",
+  }));
 
-                          setMessageIndex(
-                            (prev) => (prev + 1) % disagreementResponses.length
-                          );
+  setNegativeError("");
+}}
+      />
+      <span className="ml-2">Agree</span>
+    </label>
 
-                          setDisagreeMessages((prev) => ({
-                            ...prev,
-                            [item]: randomMessage,
-                          }));
+    <label>
+      <input
+        type="radio"
+        name={item}
+        onChange={() => {
+  const randomMessage = disagreementResponses[messageIndex];
 
-                          setDisagreedItem(item);
-                          setResponses((prev) => ({ ...prev, [item]: "agree" }));
+    setMessageIndex(
+      (prev) => (prev + 1) % disagreementResponses.length
+    );
 
-                          setTimeout(() => {
-                            setDisagreeMessages((prev) => ({
-                              ...prev,
-                              [item]: "",
-                            }));
-                          }, 2500);
-                        }}
-                      />
+    setDisagreeMessages((prev) => ({
+      ...prev,
+      [item]: randomMessage,
+    }));
+
+    setResponses((prev) => ({
+      ...prev,
+      [item]: "agree",
+    }));
+  }}
+/>
                       <span className="ml-2">Disagree</span>
                     </label>
                   </div>
@@ -277,7 +333,7 @@ export default function Home() {
                   setNegativeError("You must agree to all findings before proceeding.");
                   return;
                 }
-                setStep(5);
+                setStep(6);
               }}
             >
               Continue
@@ -285,7 +341,8 @@ export default function Home() {
           </>
         )}
 
-        {step === 5 && (
+        {/* STEP 6: Calendar & Final Submission */}
+        {step === 6 && (
           <>
             <div className="grid md:grid-cols-2 gap-6 items-start w-full">
               {/* LEFT: Calendar */}
@@ -296,39 +353,33 @@ export default function Home() {
 
                 <div className="bg-white dark:bg-gray-800 border rounded-2xl p-3 shadow-sm w-full overflow-hidden">
                   <Calendar
-  mode="single"
-  selected={selectedDate}
-  onSelect={setSelectedDate}
-  disabled={(date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const d = new Date(date);
+                      d.setHours(0, 0, 0, 0);
+                      const key = date.toISOString().split("T")[0];
 
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
+                      if (
+                        key === "2026-06-19" ||
+                        key === "2026-06-20" ||
+                        key === "2026-06-26"
+                      ) {
+                        return false;
+                      }
 
-    const key = date.toISOString().split("T")[0];
-
-    if (
-      key === "2026-06-19" ||
-      key === "2026-06-20" ||
-      key === "2026-06-26"
-    ) {
-      return false;
-    }
-
-    return d < today || !Object.keys(availability).includes(key);
-  }}
-  className="rounded-md w-full"
-  classNames={{
-    day: "h-9 w-9 p-0 font-normal flex items-center justify-center",
-
-    // 👇 ADD THIS
-selected:
-      "bg-pink-500 text-white rounded-md hover:bg-pink-600",
-
-    day_button: "h-9 w-9 flex items-center justify-center",
-  }}
-/>
+                      return d < today || !Object.keys(availability).includes(key);
+                    }}
+                    className="rounded-md w-full"
+                    classNames={{
+                      day: "h-9 w-9 p-0 font-normal flex items-center justify-center",
+                      selected: "bg-pink-500 text-white rounded-md hover:bg-pink-600",
+                      day_button: "h-9 w-9 flex items-center justify-center",
+                    }}
+                  />
                 </div>
               </div>
 
@@ -401,51 +452,51 @@ selected:
                 )}
               </div>
             </div>
-          
-    {/* SUBMIT BUTTON */}
-<button
-  disabled={!selectedDate || !selectedSlot}
-  onClick={async () => {
-    if (!selectedDate || !selectedSlot) return;
 
-    const { data, error } = await supabase
-      .from("application")
-      .insert({
-       first_name: firstName,
-      last_name: lastName,
-      selected_slot: selectedSlot,
-      responses: responses,
-      comment: comment,
-      })
-      .select();
+            {/* SUBMIT BUTTON */}
+            <button
+              disabled={!selectedDate || !selectedSlot}
+              onClick={async () => {
+                if (!selectedDate || !selectedSlot) return;
 
-    if (error) {
-      console.error("Supabase error:", error);
-      alert(error.message);
-      return;
-    }
+                const { data, error } = await supabase
+                  .from("application")
+                  .insert({
+                    first_name: firstName,
+                    last_name: lastName,
+                    selected_slot: selectedSlot,
+                    responses: responses,
+                    comment: comment,
+                  })
+                  .select();
 
-    console.log("Saved row:", data);
-    setStep(6);
-  }}
-  className={`mt-8 w-full py-3 rounded-xl font-medium transition ${
-    selectedDate && selectedSlot
-      ? "bg-pink-500 text-white hover:bg-pink-600"
-      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-  }`}
->
-  Submit Application 💖
-</button>
-  </>
-)}
-        {/* STEP 6 */}
-        {step === 6 && (
+                if (error) {
+                  console.error("Supabase error:", error);
+                  alert(error.message);
+                  return;
+                }
+
+                console.log("Saved row:", data);
+                setStep(7);
+              }}
+              className={`mt-8 w-full py-3 rounded-xl font-medium transition ${
+                selectedDate && selectedSlot
+                  ? "bg-pink-500 text-white hover:bg-pink-600"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Submit Application 💖
+            </button>
+          </>
+        )}
+
+        {/* STEP 7: Completion */}
+        {step === 7 && (
           <>
             <h1 className="text-4xl font-bold mb-4">Submission Complete 💖</h1>
             <p className="text-lg">Your application has been successfully submitted.</p>
             <p className="mt-4 text-gray-600">
-              Thank you for participating in the evaluation process.
-              The committee (me) will review your responses.
+              Thank you for participating in the evaluation process. The committee (me) will review your responses.
             </p>
           </>
         )}
