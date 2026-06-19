@@ -281,16 +281,17 @@ setMessageIndex(
           </>
         )}
 
-     {/* STEP 5: Calendar & Times Side-by-Side */}
-{step === 5 && (
-  <div className="grid md:grid-cols-2 gap-8 items-start w-full">
-    
-    {/* LEFT: Calendar */}
-    <div className="min-w-0">
-      <h3 className="text-xl font-semibold mb-4">Select a Date</h3>
+ {step === 5 && (
+  <>
+    <div className="grid md:grid-cols-2 gap-6 items-start w-full">
 
-      <div className="bg-white border rounded-3xl p-4 shadow-sm w-full overflow-hidden">
-        <div className="w-full overflow-x-auto">
+      {/* LEFT: Calendar */}
+      <div className="min-w-0">
+        <h3 className="text-lg font-semibold mb-3">
+          Select a Date
+        </h3>
+
+        <div className="bg-white border rounded-2xl p-3 shadow-sm w-full overflow-hidden">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -306,47 +307,88 @@ setMessageIndex(
 
               return d < today || !availability[key];
             }}
-            className="rounded-md w-full max-w-full"
+            className="rounded-md w-full"
+            classNames={{
+              day: "h-9 w-9 p-0 font-normal flex items-center justify-center",
+              day_button: "h-9 w-9 flex items-center justify-center",
+            }}
           />
         </div>
       </div>
+
+      {/* RIGHT: Times */}
+      <div className="min-w-0">
+        {selectedDate ? (
+          <>
+            <h3 className="text-lg font-semibold mb-3">
+              Available Times
+            </h3>
+
+            {times.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {times.map((time) => (
+                  <button
+                    key={time}
+                    onClick={() => setSelectedSlot(time)}
+                    className={`rounded-lg border p-2 text-sm transition ${
+                      selectedSlot === time
+                        ? "bg-pink-500 text-white border-pink-500"
+                        : "hover:bg-pink-50"
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-sm">
+                No available times for this date.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-gray-600 text-sm">
+            Please select a date to see available times.
+          </p>
+        )}
+      </div>
     </div>
 
-    {/* RIGHT: Times */}
-    <div className="min-w-0">
-      {selectedDate ? (
-        <>
-          <h3 className="text-xl font-semibold mb-4">Available Times</h3>
+    {/* SUBMIT BUTTON */}
+<button
+  disabled={!selectedDate || !selectedSlot}
+  onClick={async () => {
+    if (!selectedDate || !selectedSlot) return;
 
-          {times.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {times.map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedSlot(time)}
-                  className={`rounded-xl border p-3 transition ${
-                    selectedSlot === time
-                      ? "bg-pink-500 text-white border-pink-500"
-                      : "hover:bg-pink-50"
-                  }`}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-600">
-              No available times for this date.
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="text-gray-600">
-          Please select a date to see available times.
-        </p>
-      )}
-    </div>
-  </div>
+    const { data, error } = await supabase
+      .from("application")
+      .insert({
+       first_name: firstName,
+      last_name: lastName,
+      selected_slot: selectedSlot,
+      responses: responses,
+      comment: comment,
+      })
+      .select();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      alert(error.message);
+      return;
+    }
+
+    console.log("Saved row:", data);
+    setStep(6);
+  }}
+  className={`mt-8 w-full py-3 rounded-xl font-medium transition ${
+    selectedDate && selectedSlot
+      ? "bg-pink-500 text-white hover:bg-pink-600"
+      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+  }`}
+>
+  Submit Application 💖
+</button>
+  </>
 )}
         {/* STEP 6 */}
         {step === 6 && (
