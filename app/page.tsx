@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Calendar } from "@/components/ui/calendar"; // Import Calendar
+import { Calendar } from "@/components/ui/calendar";
 
 export default function Home() {
   // Existing states
@@ -11,19 +11,17 @@ export default function Home() {
   const [selectedSlot, setSelectedSlot] = useState("");
   const [step, setStep] = useState(1);
   const [firstName, setFirstName] = useState("");
-  
   const [lastName, setLastName] = useState("");
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
   const [negativeError, setNegativeError] = useState("");
   const [disagreedItem, setDisagreedItem] = useState("");
   const [disagreeMessages, setDisagreeMessages] = useState<Record<string, string>>({});
-
   const [messageIndex, setMessageIndex] = useState(0);
   const selectedKey = selectedDate ? selectedDate.toISOString().split("T")[0] : "";
 
   // New profile-related states
-  const [allowedProfile, setAllowedProfile] = useState(""); // Selected profile after validation
+  const [allowedProfile, setAllowedProfile] = useState("");
 
   // Profiles list
   const profiles = ["Sam", "Amin", "Barbod", "Rumtin", "Arian"];
@@ -42,7 +40,7 @@ export default function Home() {
     },
   ];
 
-  // Existing static data
+  // Static data
   const positives = [
     "You were on time.",
     "You were decisive and took initiative with planning the date (even though we ended up going with the place I picked, nice try).",
@@ -86,9 +84,14 @@ export default function Home() {
   };
 
   const availability: Record<string, string[]> = {
-    "2026-06-27": ["6:00 PM", "7:30 PM", "9:00 PM"],
-    "2026-07-03": ["8:10 PM", "9:30 PM"],
-    "2026-07-04": ["6:00 PM", "7:30 PM"],
+    "2026-07-10": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-07-11": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-07-17": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-07-18": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-07-24": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-07-25": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-07-31": ["6:00 PM", "7:30 PM", "9:00 PM"],
+    "2026-08-01": ["6:00 PM", "7:30 PM", "9:00 PM"],
   };
   const availableDates = Object.keys(availability);
 
@@ -350,28 +353,36 @@ export default function Home() {
                 <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
                   Select a Date
                 </h3>
-
                 <div className="bg-white dark:bg-gray-800 border rounded-2xl p-3 shadow-sm w-full overflow-hidden">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const d = new Date(date);
-                      d.setHours(0, 0, 0, 0);
+                      if (!date) return true; // disable if no date
                       const key = date.toISOString().split("T")[0];
 
+                      const firstAvailableDate = new Date("2026-07-10");
+                      firstAvailableDate.setHours(0, 0, 0, 0);
+                      const d = new Date(date);
+                      d.setHours(0, 0, 0, 0);
+
+                      // Disable dates before first available
+                      if (d < firstAvailableDate) return true;
+
+                      // Disable specific dates
                       if (
                         key === "2026-06-19" ||
                         key === "2026-06-20" ||
                         key === "2026-06-26"
                       ) {
-                        return false;
+                        return true;
                       }
 
-                      return d < today || !Object.keys(availability).includes(key);
+                      // Disable dates not in availability
+                      if (!Object.keys(availability).includes(key)) return true;
+
+                      return false;
                     }}
                     className="rounded-md w-full"
                     classNames={{
@@ -390,7 +401,7 @@ export default function Home() {
                     <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
                       Time Slots
                     </h3>
-                    {/* Generate 3-hour slots from 6:00 PM to 11:00 PM */}
+                    {/* Generate 3-hour slots from 6:00 PM to 12:00 AM */}
                     {(() => {
                       const allSlots = [];
                       const startHour = 18; // 6 PM
@@ -403,18 +414,17 @@ export default function Home() {
 
                       const dateKey = selectedKey;
 
-                      // Determine if date is fully unavailable
+                      // Fully unavailable dates
                       const fullyUnavailableDates = ["2026-06-19", "2026-06-20", "2026-06-26"];
 
                       const isDateUnavailable = fullyUnavailableDates.includes(dateKey);
 
-                      // Get the actual available times for the date
+                      // Get available times for the date
                       const availableTimes = availability[dateKey] || [];
 
                       return (
                         <div className="grid grid-cols-2 gap-2">
                           {allSlots.map((slot) => {
-                            // Check if slot is available
                             const isSlotAvailable =
                               isDateUnavailable
                                 ? false
